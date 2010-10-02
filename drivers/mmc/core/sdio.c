@@ -387,6 +387,11 @@ static void mmc_sdio_detect(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
+	/* Make sure card is powered before detecting it */
+	err = pm_runtime_get_sync(&host->card->dev);
+	if (err < 0)
+		goto out;
+
 	mmc_claim_host(host);
 
 	/*
@@ -396,6 +401,7 @@ static void mmc_sdio_detect(struct mmc_host *host)
 
 	mmc_release_host(host);
 
+out:
 	if (err) {
 		mmc_sdio_remove(host);
 
@@ -403,6 +409,9 @@ static void mmc_sdio_detect(struct mmc_host *host)
 		mmc_detach_bus(host);
 		mmc_release_host(host);
 	}
+
+	/* Tell PM core that we're done */
+	pm_runtime_put(&host->card->dev);
 }
 
 /*
