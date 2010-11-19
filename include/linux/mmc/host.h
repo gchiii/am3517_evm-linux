@@ -151,6 +151,12 @@ struct mmc_host {
 #define MMC_CAP_DISABLE		(1 << 7)	/* Can the host be disabled */
 #define MMC_CAP_NONREMOVABLE	(1 << 8)	/* Nonremovable e.g. eMMC */
 #define MMC_CAP_WAIT_WHILE_BUSY	(1 << 9)	/* Waits while card is busy */
+#define MMC_CAP_ERASE		(1 << 10)	/* Allow erase/trim commands */
+#define MMC_CAP_1_8V_DDR	(1 << 11)	/* can support */
+						/* DDR mode at 1.8V */
+#define MMC_CAP_1_2V_DDR	(1 << 12)	/* can support */
+						/* DDR mode at 1.2V */
+#define MMC_CAP_POWER_OFF_CARD	(1 << 13)	/* Can power off after boot */
 
 	/* host specific block data */
 	unsigned int		max_seg_size;	/* see blk_queue_max_segment_size */
