@@ -22,6 +22,7 @@
 #include <linux/scatterlist.h>
 #include <linux/log2.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pm_runtime.h>
 
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
@@ -1286,12 +1287,13 @@ int mmc_suspend_host(struct mmc_host *host, pm_message_t state)
 			mmc_claim_host(host);
 			mmc_detach_bus(host);
 			mmc_release_host(host);
+			host->pm_flags = 0;
 			err = 0;
 		}
 	}
 	mmc_bus_put(host);
 
-	if (!err)
+	if (!err && !(host->pm_flags & MMC_PM_KEEP_POWER))
 		mmc_power_off(host);
 
 	return err;
@@ -1309,8 +1311,22 @@ int mmc_resume_host(struct mmc_host *host)
 
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
-		mmc_power_up(host);
-		mmc_select_voltage(host, host->ocr);
+		if (!(host->pm_flags & MMC_PM_KEEP_POWER)) {
+			mmc_power_up(host);
+			mmc_select_voltage(host, host->ocr);
+			/*
+			 * Tell runtime PM core we just powered up the card,
+			 * since it still believes the card is powered off.
+			 * Note that currently runtime PM is only enabled
+			 * for SDIO cards that are MMC_CAP_POWER_OFF_CARD
+			 */
+			if (mmc_card_sdio(host->card) &&
+				(host->caps & MMC_CAP_POWER_OFF_CARD)) {
+				pm_runtime_disable(&host->card->dev);
+				pm_runtime_set_active(&host->card->dev);
+				pm_runtime_enable(&host->card->dev);
+			}
+ 		}
 		BUG_ON(!host->bus_ops->resume);
 		err = host->bus_ops->resume(host);
 		if (err) {
