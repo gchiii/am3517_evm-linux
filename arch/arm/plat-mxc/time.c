@@ -26,6 +26,7 @@
 #include <linux/clockchips.h>
 #include <linux/clk.h>
 
+#include <asm/sched_clock.h>
 #include <mach/hardware.h>
 #include <asm/mach/time.h>
 #include <mach/common.h>
@@ -104,14 +105,36 @@ static cycle_t mx3_get_cycles(struct clocksource *cs)
 	return __raw_readl(timer_base + MX3_TCN);
 }
 
+/* dummy used before clocks are enabled*/
+static cycle_t get_cycles_dummy(struct clocksource *cs)
+{
+	return 0;
+}
+
 static struct clocksource clocksource_mxc = {
 	.name 		= "mxc_timer1",
 	.rating		= 200,
-	.read		= mx1_2_get_cycles,
+	.read		= get_cycles_dummy,
 	.mask		= CLOCKSOURCE_MASK(32),
 	.shift 		= 20,
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
+
+static DEFINE_CLOCK_DATA(cd);
+
+unsigned long long notrace sched_clock(void)
+{
+	cycle_t cyc = clocksource_mxc.read(NULL);
+
+	return cyc_to_sched_clock(&cd, cyc, (u32)~0);
+}
+
+static void notrace mxc_update_sched_clock(void)
+{
+	cycle_t cyc = clocksource_mxc.read(NULL);
+
+	update_sched_clock(&cd, cyc, (u32)~0);
+}
 
 static int __init mxc_clocksource_init(struct clk *timer_clk)
 {
@@ -119,9 +142,12 @@ static int __init mxc_clocksource_init(struct clk *timer_clk)
 
 	if (cpu_is_mx3() || cpu_is_mx25())
 		clocksource_mxc.read = mx3_get_cycles;
+	else
+		clocksource_mxc.read = mx1_2_get_cycles;
 
 	clocksource_mxc.mult = clocksource_hz2mult(c,
 					clocksource_mxc.shift);
+	init_sched_clock(&cd, mxc_update_sched_clock, 32, c);
 	clocksource_register(&clocksource_mxc);
 
 	return 0;

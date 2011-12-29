@@ -69,7 +69,11 @@ struct page {
 						 */
 	    };
 #if USE_SPLIT_PTLOCKS
+#ifndef CONFIG_PREEMPT_RT
 	    spinlock_t ptl;
+#else
+	    spinlock_t *ptl;
+#endif
 #endif
 	    struct kmem_cache *slab;	/* SLUB: Pointer to slab */
 	    struct page *first_page;	/* Compound tail pages */
@@ -140,7 +144,7 @@ struct vm_area_struct {
 					   within vm_mm. */
 
 	/* linked list of VM areas per task, sorted by address */
-	struct vm_area_struct *vm_next;
+	struct vm_area_struct *vm_next, *vm_prev;
 
 	pgprot_t vm_page_prot;		/* Access permissions of this VMA. */
 	unsigned long vm_flags;		/* Flags, see mm.h. */
@@ -250,6 +254,9 @@ struct mm_struct {
 
 	/* Architecture-specific MM context */
 	mm_context_t context;
+
+	/* realtime bits */
+	struct list_head	delayed_drop;
 
 	/* Swap token stuff */
 	/*

@@ -43,6 +43,7 @@ extern void schedule_rt_mutex_test(struct rt_mutex *lock);
  * @list_entry:		pi node to enqueue into the mutex waiters list
  * @pi_list_entry:	pi node to enqueue into the mutex owner waiters list
  * @task:		task reference to the blocked task
+ * @savestate:		should the task be woken with wake_up_process_mutex?
  */
 struct rt_mutex_waiter {
 	struct plist_node	list_entry;
@@ -54,6 +55,7 @@ struct rt_mutex_waiter {
 	struct pid		*deadlock_task_pid;
 	struct rt_mutex		*deadlock_lock;
 #endif
+	int			savestate;
 };
 
 /*
@@ -91,9 +93,8 @@ task_top_pi_waiter(struct task_struct *p)
 /*
  * lock->owner state tracking:
  */
-#define RT_MUTEX_OWNER_PENDING	1UL
-#define RT_MUTEX_HAS_WAITERS	2UL
-#define RT_MUTEX_OWNER_MASKALL	3UL
+#define RT_MUTEX_HAS_WAITERS	1UL
+#define RT_MUTEX_OWNER_MASKALL	1UL
 
 static inline struct task_struct *rt_mutex_owner(struct rt_mutex *lock)
 {
@@ -101,20 +102,12 @@ static inline struct task_struct *rt_mutex_owner(struct rt_mutex *lock)
 		((unsigned long)lock->owner & ~RT_MUTEX_OWNER_MASKALL);
 }
 
-static inline struct task_struct *rt_mutex_real_owner(struct rt_mutex *lock)
-{
-	return (struct task_struct *)
-		((unsigned long)lock->owner & ~RT_MUTEX_HAS_WAITERS);
-}
-
-static inline unsigned long rt_mutex_owner_pending(struct rt_mutex *lock)
-{
-	return (unsigned long)lock->owner & RT_MUTEX_OWNER_PENDING;
-}
-
 /*
  * PI-futex support (proxy locking functions, etc.):
  */
+
+#define PI_WAKEUP_INPROGRESS	((struct rt_mutex_waiter *) 1)
+
 extern struct task_struct *rt_mutex_next_owner(struct rt_mutex *lock);
 extern void rt_mutex_init_proxy_locked(struct rt_mutex *lock,
 				       struct task_struct *proxy_owner);
@@ -128,6 +121,26 @@ extern int rt_mutex_finish_proxy_lock(struct rt_mutex *lock,
 				      struct hrtimer_sleeper *to,
 				      struct rt_mutex_waiter *waiter,
 				      int detect_deadlock);
+
+
+#define STEAL_LATERAL 1
+#define STEAL_NORMAL  0
+
+/*
+ * Note that RT tasks are excluded from lateral-steals to prevent the
+ * introduction of an unbounded latency
+ */
+static inline int lock_is_stealable(struct task_struct *task,
+				    struct task_struct *pendowner, int mode)
+{
+    if (mode == STEAL_NORMAL || rt_task(task)) {
+	    if (task->prio >= pendowner->prio)
+		    return 0;
+    } else if (task->prio > pendowner->prio)
+	    return 0;
+
+    return 1;
+}
 
 #ifdef CONFIG_DEBUG_RT_MUTEXES
 # include "rtmutex-debug.h"

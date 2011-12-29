@@ -392,7 +392,8 @@ static int function_stat_show(struct seq_file *m, void *v)
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
 	seq_printf(m, "    ");
 	avg = rec->time;
-	do_div(avg, rec->counter);
+	if (rec->counter)
+		do_div(avg, rec->counter);
 
 	mutex_lock(&mutex);
 	trace_seq_init(&s);
@@ -2411,7 +2412,7 @@ static const struct file_operations ftrace_filter_fops = {
 	.open = ftrace_filter_open,
 	.read = seq_read,
 	.write = ftrace_filter_write,
-	.llseek = ftrace_regex_lseek,
+	.llseek = no_llseek,
 	.release = ftrace_filter_release,
 };
 
