@@ -1,6 +1,15 @@
 comment "OMAP Core Type"
 	depends on ARCH_OMAP2
 
+config IR_UART3
+   default n
+	bool "Enable IrDA on UART3"
+	depends on MACH_OMAP3517NUPULSE
+	default n
+	help
+	  Say YES here to use UART3 for IrDA (or IrCOMM) purposes. Note: on the AM3517 EVM, hardware
+	  modifications (disabling the RS232 driver, U24) may be required to have UART3 work correctly.
+
 config ARCH_OMAP24XX
 	bool "OMAP24xx Based System"
 	depends on ARCH_OMAP2

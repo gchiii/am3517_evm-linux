@@ -40,7 +40,7 @@
  * NOTE: By default the serial timeout is disabled as it causes lost characters
  * over the serial ports. This means that the UART clocks will stay on until
  * disabled via sysfs. This also causes that any deeper omap sleep states are
- * blocked. 
+ * blocked.
  */
 #define DEFAULT_TIMEOUT 0
 
@@ -146,7 +146,7 @@ static inline unsigned int serial_read_reg(struct plat_serial8250_port *up,
 }
 
 static inline void serial_write_reg(struct plat_serial8250_port *p, int offset,
-				    int value)
+					int value)
 {
 	offset <<= p->regshift;
 	__raw_writeb(value, p->membase + offset);
@@ -427,7 +427,7 @@ static void omap_uart_idle_init(struct omap_uart_state *uart)
 	uart->can_sleep = 0;
 	uart->timeout = DEFAULT_TIMEOUT;
 	setup_timer(&uart->timer, omap_uart_idle_timer,
-		    (unsigned long) uart);
+			(unsigned long) uart);
 	if (uart->timeout)
 		mod_timer(&uart->timer, jiffies + uart->timeout);
 	omap_uart_smart_idle_enable(uart, 0);
@@ -696,10 +696,26 @@ void __init omap_serial_init_port(int port)
 		return;
 
 	if ((cpu_is_omap34xx() && uart->padconf) ||
-	    (uart->wk_en && uart->wk_mask)) {
+		(uart->wk_en && uart->wk_mask)) {
 		device_init_wakeup(dev, true);
 		DEV_CREATE_FILE(dev, &dev_attr_sleep_timeout);
 	}
+
+#if defined(CONFIG_IR_UART3)	// i.e. SIR FF mode (Free Format)
+	{
+		struct plat_serial8250_port *p = dev->platform_data;
+		struct plat_serial8250_port *uartp = uart->p;
+
+		if (p->mapbase == OMAP_UART3_BASE)
+		{
+			u16 data;
+			printk("Configuring UART3 for SIR-FF mode");
+			data = serial_read_reg(uartp, UART_OMAP_MDR2);
+			data |= (1<<3);	// bit 3 is UART pulse shape
+			serial_write_reg(uartp, UART_OMAP_MDR2, data);
+		}
+	}
+#endif
 
 		/* omap44xx: Never read empty UART fifo
 		 * omap3xxx: Never read empty UART fifo on UARTs
