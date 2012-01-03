@@ -34,6 +34,7 @@
 #define INTC_PENDING_IRQ0	0x0098
 /* Number of IRQ state bits in each MIR register */
 #define IRQ_BITS_PER_REG	32
+#define INTC_ILR0			0x0100	// DCY
 
 /*
  * OMAP2 has a number of different interrupt controllers, each interrupt
@@ -75,6 +76,30 @@ static u32 intc_bank_read_reg(struct omap_irq_bank *bank, u16 reg)
 {
 	return __raw_readl(bank->base_reg + reg);
 }
+
+
+// DCY
+#include <plat/hardware.h>
+void omap_irq_set_cfg(int irq, int fiq, int priority, int trigger)
+{
+		unsigned long val, offset;
+
+		/* FIQ is only available on bank 0 interrupts */
+		val = fiq | ((priority & 0x1f) << 2) | ((trigger & 0x1) << 1);
+		offset = INTC_ILR0 + (irq * 0x4);
+		intc_bank_write_reg(val, &irq_banks[0], offset);
+}
+
+// DCY
+void omap_irq_get_cfg(int irq)
+{
+		unsigned long val, offset;
+
+		offset = INTC_ILR0 + (irq * 0x4);
+		val = intc_bank_read_reg(&irq_banks[0], offset);
+		printk("IRQ %d priority %lX\n", irq, val);
+}
+
 
 static int previous_irq;
 
@@ -169,6 +194,8 @@ static void __init omap_irq_bank_init_one(struct omap_irq_bank *bank)
 
 	/* Enable autoidle */
 	intc_bank_write_reg(1 << 0, bank, INTC_SYSCONFIG);
+
+	tmp = intc_bank_read_reg(bank, INTC_ILR0);
 }
 
 int omap_irq_pending(void)
@@ -181,7 +208,7 @@ int omap_irq_pending(void)
 
 		for (irq = 0; irq < bank->nr_irqs; irq += 32)
 			if (intc_bank_read_reg(bank, INTC_PENDING_IRQ0 +
-					       ((irq >> 5) << 5)))
+						   ((irq >> 5) << 5)))
 				return 1;
 	}
 	return 0;
@@ -218,13 +245,17 @@ void __init omap_init_irq(void)
 	}
 
 	printk(KERN_INFO "Total of %ld interrupts on %d active controller%s\n",
-	       nr_of_irqs, nr_banks, nr_banks > 1 ? "s" : "");
+		   nr_of_irqs, nr_banks, nr_banks > 1 ? "s" : "");
 
 	for (i = 0; i < nr_of_irqs; i++) {
 		set_irq_chip(i, &omap_irq_chip);
 		set_irq_handler(i, handle_level_irq);
 		set_irq_flags(i, IRQF_VALID);
+		omap_irq_set_cfg(i, 0, 10, 0);
+		omap_irq_get_cfg(i);		// DCY
 	}
+		omap_irq_set_cfg(74, 0, 0, 0);
+		omap_irq_get_cfg(74);		// DCY
 }
 
 #ifdef CONFIG_ARCH_OMAP3

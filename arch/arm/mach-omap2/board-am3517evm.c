@@ -46,6 +46,9 @@
 #include <plat/gpmc.h>
 #include <plat/nand.h>
 
+#include <linux/spi/spi.h>
+#include <plat/mcspi.h>
+
 #include <media/tvp514x.h>
 #include <media/ti-media/vpfe_capture.h>
 
@@ -60,91 +63,105 @@
 static struct mtd_partition am3517evm_nand_partitions[] = {
 /* All the partition sizes are listed in terms of NAND block size */
 {
-       .name           = "xloader-nand",
-       .offset         = 0,
-       .size           = 4*(SZ_128K),
-       .mask_flags     = MTD_WRITEABLE
+	   .name           = "xloader-nand",
+	   .offset         = 0,
+	   .size           = 4*(SZ_128K),
+	   .mask_flags     = MTD_WRITEABLE
 },
 {
-       .name           = "uboot-nand",
-       .offset         = MTDPART_OFS_APPEND,
-       .size           = 14*(SZ_128K),
-       .mask_flags     = MTD_WRITEABLE
+	   .name           = "uboot-nand",
+	   .offset         = MTDPART_OFS_APPEND,
+	   .size           = 14*(SZ_128K),
+	   .mask_flags     = MTD_WRITEABLE
 },
 {
-       .name           = "params-nand",
-       .offset         = MTDPART_OFS_APPEND,
-       .size           = 2*(SZ_128K)
+	   .name           = "params-nand",
+	   .offset         = MTDPART_OFS_APPEND,
+	   .size           = 2*(SZ_128K)
 },
 {
-       .name           = "linux-nand",
-       .offset         = MTDPART_OFS_APPEND,
-       .size           = 40*(SZ_128K)
+	   .name           = "linux-nand",
+	   .offset         = MTDPART_OFS_APPEND,
+	   .size           = 40*(SZ_128K)
 },
 {
-       .name           = "jffs2-nand",
-       .size           = MTDPART_SIZ_FULL,
-       .offset         = MTDPART_OFS_APPEND,
+	   .name           = "jffs2-nand",
+	   .size           = MTDPART_SIZ_FULL,
+	   .offset         = MTDPART_OFS_APPEND,
 },
 };
 
 static struct omap_nand_platform_data am3517evm_nand_data = {
-       .parts          = am3517evm_nand_partitions,
-       .nr_parts       = ARRAY_SIZE(am3517evm_nand_partitions),
-       .nand_setup     = NULL,
-       .dma_channel    = -1,           /* disable DMA in OMAP NAND driver */
-       .dev_ready      = NULL,
+	   .parts          = am3517evm_nand_partitions,
+	   .nr_parts       = ARRAY_SIZE(am3517evm_nand_partitions),
+	   .nand_setup     = NULL,
+	   .dma_channel    = -1,           /* disable DMA in OMAP NAND driver */
+	   .dev_ready      = NULL,
 };
 
 static struct resource am3517evm_nand_resource = {
-       .flags          = IORESOURCE_MEM,
+	   .flags          = IORESOURCE_MEM,
 };
 
 static struct platform_device am3517evm_nand_device = {
-       .name           = "omap2-nand",
-       .id             = 0,
-       .dev            = {
-                       .platform_data  = &am3517evm_nand_data,
-       },
-       .num_resources  = 1,
-       .resource       = &am3517evm_nand_resource,
+	   .name           = "omap2-nand",
+	   .id             = 0,
+	   .dev            = {
+					   .platform_data  = &am3517evm_nand_data,
+	   },
+	   .num_resources  = 1,
+	   .resource       = &am3517evm_nand_resource,
 };
 
 void __init am3517evm_flash_init(void)
 {
-       u8 cs = 0;
-       u8 nandcs = GPMC_CS_NUM + 1;
-       u32 gpmc_base_add = OMAP34XX_GPMC_VIRT;
+	   u8 cs = 0;
+	   u8 nandcs = GPMC_CS_NUM + 1;
+	   u32 gpmc_base_add = OMAP34XX_GPMC_VIRT;
 
-       while (cs < GPMC_CS_NUM) {
-               u32 ret = 0;
-               ret = gpmc_cs_read_reg(cs, GPMC_CS_CONFIG1);
+	   while (cs < GPMC_CS_NUM) {
+			   u32 ret = 0;
+			   ret = gpmc_cs_read_reg(cs, GPMC_CS_CONFIG1);
 
-               if ((ret & 0xC00) == 0x800) {
-                       /* Found it!! */
-                       if (nandcs > GPMC_CS_NUM)
-                               nandcs = cs;
-               }
-               cs++;
-       }
-       if (nandcs > GPMC_CS_NUM) {
-               printk(KERN_INFO "NAND: Unable to find configuration "
-                       " in GPMC\n ");
-               return;
-       }
+			   if ((ret & 0xC00) == 0x800) {
+					   /* Found it!! */
+					   if (nandcs > GPMC_CS_NUM)
+							   nandcs = cs;
+			   }
+			   cs++;
+	   }
+	   if (nandcs > GPMC_CS_NUM) {
+			   printk(KERN_INFO "NAND: Unable to find configuration "
+					   " in GPMC\n ");
+			   return;
+	   }
 
-       if (nandcs < GPMC_CS_NUM) {
-               am3517evm_nand_data.cs   = nandcs;
-               am3517evm_nand_data.gpmc_cs_baseaddr = (void *)(gpmc_base_add +
-                                       GPMC_CS0_BASE + nandcs*GPMC_CS_SIZE);
-               am3517evm_nand_data.gpmc_baseaddr   = (void *) (gpmc_base_add);
+	   if (nandcs < GPMC_CS_NUM) {
+			   am3517evm_nand_data.cs   = nandcs;
+			   am3517evm_nand_data.gpmc_cs_baseaddr = (void *)(gpmc_base_add +
+									   GPMC_CS0_BASE + nandcs*GPMC_CS_SIZE);
+			   am3517evm_nand_data.gpmc_baseaddr   = (void *) (gpmc_base_add);
 
-               if (platform_device_register(&am3517evm_nand_device) < 0)
-                       printk(KERN_ERR "Unable to register NAND device\n");
+			   if (platform_device_register(&am3517evm_nand_device) < 0)
+					   printk(KERN_ERR "Unable to register NAND device\n");
 
-       }
+	   }
 }
 
+static struct omap2_mcspi_device_config lcd_mcspi_config = {
+	.turbo_mode	= 0,
+	.single_channel	= 1,	/* 0: slave, 1: master */
+};
+
+struct spi_board_info ndu_spi_board_info[] = {
+	[0] = {
+		.modalias		= "spidev",
+		.bus_num		= 1,
+		.chip_select		= 0,
+		.max_speed_hz		= 1500000,
+		.controller_data	= &lcd_mcspi_config,
+	},
+};
 
 #define AM35XX_EVM_PHY_MASK		(0xF)
 #define AM35XX_EVM_MDIO_FREQUENCY    	(1000000)
@@ -753,14 +770,14 @@ static struct i2c_board_info __initdata am3517evm_i2c2_boardinfo[] = {
 
 #define KEYPAD_BUTTON(ev_type, ev_code, act_low, descr) \
 {                                                               \
-        .type           = ev_type,                              \
-        .code           = ev_code,                              \
-        .active_low     = act_low,                              \
-        .desc           = "btn " descr,                         \
+		.type           = ev_type,                              \
+		.code           = ev_code,                              \
+		.active_low     = act_low,                              \
+		.desc           = "btn " descr,                         \
 }
 
 #define KEYPAD_BUTTON_LOW(event_code, description)      \
-        KEYPAD_BUTTON(EV_KEY, event_code, 1, description)
+		KEYPAD_BUTTON(EV_KEY, event_code, 1, description)
 
 static struct gpio_keys_button am3517_gpio_keys[] = {
 	KEYPAD_BUTTON_LOW( KEY_DOWN,	"down"),
@@ -837,49 +854,49 @@ static void am3517_hecc_plat_init(void)
 {
 	int r;
 
-        r = gpio_request(CAN_STB, "can_stb");
-        if (r) {
-                printk(KERN_ERR "failed to get can_stb \n");
+		r = gpio_request(CAN_STB, "can_stb");
+		if (r) {
+				printk(KERN_ERR "failed to get can_stb \n");
 		return;
-        }
+		}
 
-        gpio_direction_output(CAN_STB, 0);
+		gpio_direction_output(CAN_STB, 0);
 }
 
 static struct resource am3517_hecc_resources[] = {
-        {
-                .start  = AM35XX_IPSS_HECC_BASE,
-                .end    = AM35XX_IPSS_HECC_BASE + 0x3FFF,
-                .flags  = IORESOURCE_MEM,
-        },
-        {
-                .start  = INT_35XX_HECC0_IRQ,
-                .end    = INT_35XX_HECC0_IRQ,
-                .flags  = IORESOURCE_IRQ,
-        },
+		{
+				.start  = AM35XX_IPSS_HECC_BASE,
+				.end    = AM35XX_IPSS_HECC_BASE + 0x3FFF,
+				.flags  = IORESOURCE_MEM,
+		},
+		{
+				.start  = INT_35XX_HECC0_IRQ,
+				.end    = INT_35XX_HECC0_IRQ,
+				.flags  = IORESOURCE_IRQ,
+		},
 };
 
 static struct platform_device am3517_hecc_device = {
-        .name           = "ti_hecc",
-        .id             = 1,
-        .num_resources  = ARRAY_SIZE(am3517_hecc_resources),
-        .resource       = am3517_hecc_resources,
+		.name           = "ti_hecc",
+		.id             = 1,
+		.num_resources  = ARRAY_SIZE(am3517_hecc_resources),
+		.resource       = am3517_hecc_resources,
 };
 
 static struct ti_hecc_platform_data am3517_evm_hecc_pdata = {
-        .scc_hecc_offset        = AM35XX_HECC_SCC_HECC_OFFSET,
-        .scc_ram_offset         = AM35XX_HECC_SCC_RAM_OFFSET,
-        .hecc_ram_offset        = AM35XX_HECC_RAM_OFFSET,
-        .mbx_offset            = AM35XX_HECC_MBOX_OFFSET,
-        .int_line               = AM35XX_HECC_INT_LINE,
-        .version                = AM35XX_HECC_VERSION,
+		.scc_hecc_offset        = AM35XX_HECC_SCC_HECC_OFFSET,
+		.scc_ram_offset         = AM35XX_HECC_SCC_RAM_OFFSET,
+		.hecc_ram_offset        = AM35XX_HECC_RAM_OFFSET,
+		.mbx_offset            = AM35XX_HECC_MBOX_OFFSET,
+		.int_line               = AM35XX_HECC_INT_LINE,
+		.version                = AM35XX_HECC_VERSION,
 	.platform_init		= am3517_hecc_plat_init,
 };
 
 static void am3517_evm_hecc_init(struct ti_hecc_platform_data *pdata)
 {
-        am3517_hecc_device.dev.platform_data = pdata;
-        platform_device_register(&am3517_hecc_device);
+		am3517_hecc_device.dev.platform_data = pdata;
+		platform_device_register(&am3517_hecc_device);
 }
 
 
@@ -927,6 +944,16 @@ static struct omap_board_mux board_mux[] __initdata = {
 	OMAP3_MUX(CHASSIS_DMAREQ3, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLDOWN),
 	OMAP3_MUX(MCBSP_CLKS, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP),
 	OMAP3_MUX(GPMC_NCS4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN),
+
+//DCY	OMAP3_MUX(MCSPI1_CLK, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(MCSPI1_CLK, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
+
+//DCY	OMAP3_MUX(MCSPI1_CS0, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(MCSPI1_CS0, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
+
+	OMAP3_MUX(MCSPI1_SIMO, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(MCSPI1_SOMI, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLDOWN),
+
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
 #else
@@ -969,10 +996,31 @@ static void __init am3517_evm_init(void)
 	/* Configure GPIO for EHCI port */
 	omap_mux_init_gpio(57, OMAP_PIN_OUTPUT);
 	usb_ehci_init(&ehci_pdata);
+	spi_register_board_info(ndu_spi_board_info,
+				ARRAY_SIZE(ndu_spi_board_info));
 
 	/* TSC 2004 */
 	omap_mux_init_gpio(65, OMAP_PIN_INPUT_PULLUP);
 	am3517evm_i2c1_boardinfo[0].irq = gpio_to_irq(GPIO_TSC2004_IRQ);
+
+/* enable DEBUG PIN using GPIO174 */	// DCY
+	#define MCSPI1_CS0	174
+	omap_mux_init_gpio(174, OMAP_PIN_OUTPUT);
+	gpio_request(MCSPI1_CS0, "enable DEBUG PIN");
+	gpio_direction_output(MCSPI1_CS0, 1);
+	gpio_set_value(MCSPI1_CS0, 1);
+
+	/* enable DEBUG PIN using GPIO171 */	// DCY
+	#define MCSPI1_CLK	171
+	omap_mux_init_gpio(171, OMAP_PIN_OUTPUT);
+	gpio_request(MCSPI1_CLK, "enable DEBUG PIN");
+	gpio_direction_output(MCSPI1_CLK, 1);
+	gpio_set_value(MCSPI1_CLK, 1);
+
+
+
+
+
 
 	/* RTC - S35390A */
 	omap_mux_init_gpio(55, OMAP_PIN_INPUT_PULLUP);

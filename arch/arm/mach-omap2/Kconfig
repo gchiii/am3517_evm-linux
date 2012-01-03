@@ -114,6 +114,11 @@ config PMIC_TPS65023
 	  Say yes here if you are using the TPS65023 based power module for the
 	  EVM boards.
 
+config MACH_OMAP3517NUPULSE
+	bool "OMAP3517/ AM3517 NuPulse board"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	select OMAP_PACKAGE_CBB
+
 config MACH_OMAP3_PANDORA
 	bool "OMAP3 Pandora"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
