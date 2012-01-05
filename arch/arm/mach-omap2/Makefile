@@ -129,8 +129,9 @@ obj-$(CONFIG_MACH_OMAP3_TOUCHBOOK)	+= board-omap3touchbook.o \
 obj-$(CONFIG_MACH_OMAP_4430SDP)		+= board-4430sdp.o
 
 obj-$(CONFIG_MACH_OMAP3517EVM)     	+= board-am3517evm.o \
-					   mmc-am3517evm.o
-
+					   mmc-am3517evm.o \
+					   board-omap3logic-productid.o
+obj-$(CONFIG_MMC_EMBEDDED_SDIO)		+= board-am3517evm-wifi.o
 # Platform specific device init code
 obj-y					+= usb-musb.o
 obj-$(CONFIG_MACH_OMAP2_TUSB6010)	+= usb-tusb6010.o

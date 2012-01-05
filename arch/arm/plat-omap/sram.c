@@ -211,6 +211,14 @@ static struct map_desc omap_sram_io_desc[] __initdata = {
 };
 
 /*
+ * Return the base address of SRAM as a virtual address
+ */
+void *sram_get_base_va(void)
+{
+  return (void *)omap_sram_io_desc[0].virtual;
+}
+
+/*
  * Note that we cannot use ioremap for SRAM, as clock init needs SRAM early.
  */
 void __init omap_map_sram(void)

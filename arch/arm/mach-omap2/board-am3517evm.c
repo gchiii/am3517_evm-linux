@@ -51,6 +51,7 @@
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 #include <plat/wifi_tiwlan.h>
 #endif
+#include <plat/omap3logic-productid.h>
 
 #include <linux/spi/spi.h>
 #include <plat/mcspi.h>
@@ -435,7 +436,7 @@ static struct am3517_hsmmc_info mmc[] = {
 	{}      /* Terminator */
 };
 
-static void wlan_mux_init()
+static void wlan_mux_init(void)
 {
 	omap_mux_init_signal("sdmmc2_clk", OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_signal("sdmmc2_cmd", OMAP_PIN_INPUT_PULLUP);	
@@ -485,6 +486,11 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 	wlan_1273_reset();
 #endif
 	omap_serial_init();
+
+	/* Check the SRAM for valid product_id data(put there by
+	 * u-boot). If not, then it will be read later. */
+	omap3logic_fetch_sram_product_id_data();
+
 	am3517evm_flash_init();
 	usb_musb_init();
 
@@ -516,6 +522,13 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 	/* MMC init function */
 	am3517_mmc_init(mmc);
 
+}
+
+void omap3logic_init_productid_specifics(void)
+{
+	/* This function is for handling specific changes based on
+	   product ID data.  Nothing has yet diverged that requires
+	   the productID data. */
 }
 
 static void __init am3517_evm_map_io(void)
