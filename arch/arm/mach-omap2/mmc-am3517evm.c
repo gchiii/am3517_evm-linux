@@ -4,6 +4,8 @@
  * Copyright (C) 2007-2008 Texas Instruments
  * Copyright (C) 2008 Nokia Corporation
  * Author: Texas Instruments
+ * Support for sdio function WLAN/BT class, and
+ * populating embedded_sdio_data structure taken from mmc-twl4030.c
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -21,6 +23,9 @@
 #include <plat/control.h>
 #include <plat/mmc.h>
 #include <plat/board.h>
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+#include <linux/mmc/sdio_ids.h>
+#endif
 #include "mmc-am3517evm.h"
 
 #define LDO_CLR			0x00
@@ -59,7 +64,7 @@ static struct mmc_controller {
 	struct omap_mmc_platform_data	*mmc;
 	u8		vmmc_dev_grp;
 	u8		vmmc_dedicated;
-	char		name[HSMMC_NAME_LEN];
+	char		name[HSMMC_NAME_LEN + 1];
 } hsmmc[] = {
 	{
 		.vmmc_dev_grp		= VMMC1_DEV_GRP,
@@ -107,12 +112,15 @@ static int mmc_late_init(struct device *dev)
 	int ret = 0;
 	int i;
 
-	ret = gpio_request(mmc->slots[0].switch_pin, "mmc_cd");
-	if (ret)
-		goto done;
-	ret = gpio_direction_input(mmc->slots[0].switch_pin);
-	if (ret)
-		goto err;
+	/* MMC/SD/SDIO doesn't require a card detect switch */
+	if (gpio_is_valid(mmc->slots[0].switch_pin)) {
+		ret = gpio_request(mmc->slots[0].switch_pin, "mmc_cd");
+		if (ret)
+			goto done;
+		ret = gpio_direction_input(mmc->slots[0].switch_pin);
+		if (ret)
+			goto err;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(hsmmc); i++) {
 		if (hsmmc[i].name == mmc->slots[0].name) {
@@ -180,6 +188,39 @@ static int mmc2_set_power(struct device *dev, int slot, int power_on, int vdd)
 
 static struct omap_mmc_platform_data *hsmmc_data[OMAP34XX_NR_MMC] __initdata;
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+static struct sdio_embedded_func wifi_func_array[] = {
+	{
+		.f_class = SDIO_CLASS_BT_A,
+		.f_maxblksize = 512,
+	},
+	{
+		.f_class = SDIO_CLASS_WLAN,
+		.f_maxblksize = 512,
+	},
+};
+
+static struct embedded_sdio_data omap_wifi_emb_data = {
+	.cis = {
+		.vendor = SDIO_VENDOR_ID_TI,
+		.device = SDIO_DEVICE_ID_TI_WL12xx,
+		.blksize = 512,
+		.max_dtr = 24000000,
+		},
+	.cccr = {
+		.multi_block = 1,
+		.low_speed = 0,
+		.wide_bus = 1,
+		.high_power = 0,
+		.high_speed = 0,
+		.disable_cd = 1,
+		},
+	.funcs = wifi_func_array,
+	.num_funcs = 2,
+	.quirks = MMC_QUIRK_VDD_165_195 | MMC_QUIRK_LENIENT_FUNC0,
+};
+#endif
+
 void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 {
 	struct am3517_hsmmc_info *c;
@@ -204,7 +245,25 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 			return;
 		}
 
-		sprintf(mmc_control->name, "mmc%islot%i", c->mmc, 1);
+		if (c->name)
+			strncpy(mmc_control->name, c->name, HSMMC_NAME_LEN);
+		else
+			snprintf(mmc_control->name, ARRAY_SIZE(mmc_control->name),
+				"mmc%islot%i", c->mmc, 1);
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		if (c->mmc == CONFIG_TIWLAN_MMC_CONTROLLER) {
+			mmc->slots[0].embedded_sdio = &omap_wifi_emb_data;
+			mmc->slots[0].register_status_notify =
+				&omap_wifi_status_register;
+			mmc->slots[0].card_detect = &omap_wifi_status;
+		}
+#else
+#ifdef CONFIG_TIWLAN_SDIO
+		if (c->mmc == CONFIG_TIWLAN_MMC_CONTROLLER)
+			mmc->name = "TIWLAN_SDIO";
+#endif
+#endif
 		mmc->slots[0].name = mmc_control->name;
 		mmc->nr_slots = 1;
 		mmc->slots[0].ocr_mask = MMC_VDD_165_195 |
@@ -214,9 +273,9 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 		mmc->slots[0].wires = c->wires;
 		mmc->slots[0].internal_clock = !c->ext_clock;
 		mmc->dma_mask = 0xffffffff;
+		mmc->init = mmc_late_init;
 
-		if (1) {
-			mmc->init = mmc_late_init;
+		if (gpio_is_valid(c->gpio_cd)) {
 			mmc->cleanup = mmc_cleanup;
 			mmc->suspend = mmc_suspend;
 			mmc->resume = mmc_resume;
@@ -240,14 +299,16 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 		/* NOTE:  we assume OMAP's MMC1 and MMC2 use
 		 * the TWL4030's VMMC1 and VMMC2, respectively;
 		 * and that OMAP's MMC3 isn't used.
-		 */
+		*/
 
 		switch (c->mmc) {
 		case 1:
 			mmc->slots[0].set_power = mmc1_set_power;
 			break;
 		case 2:
+			/* off-chip level shifting, or none */
 			mmc->slots[0].set_power = mmc2_set_power;
+			mmc->slots[0].ocr_mask = MMC_VDD_165_195;
 			break;
 		default:
 			pr_err("MMC%d configuration not supported!\n", c->mmc);
@@ -257,6 +318,15 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 	}
 
 	omap2_init_mmc(hsmmc_data, OMAP34XX_NR_MMC);
+
+	/* pass the device nodes back to board setup code */
+	for (c = controllers; c->mmc; c++) {
+		struct omap_mmc_platform_data *mmc = hsmmc_data[c->mmc - 1];
+
+		if (!c->mmc || c->mmc > nr_hsmmc)
+			continue;
+		c->dev = mmc->dev;
+	}
 }
 #else
 inline void am3517_mmc_init(struct am3517_hsmmc_info *info)

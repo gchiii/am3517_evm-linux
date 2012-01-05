@@ -19,4 +19,10 @@ struct am3517_hsmmc_info {
 	int	ocr_mask;	/* temporary HACK */
 };
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+int omap_wifi_status_register(void (*callback)
+    (int card_present, void *dev_id), void *dev_id);
+int omap_wifi_status(int irq);
+#endif
+
 void am3517_mmc_init(struct am3517_hsmmc_info *);

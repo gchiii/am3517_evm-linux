@@ -6,6 +6,7 @@
  *
  * Based on mach-omap2/board-omap3evm.c
  * Modified: Daren Yeo <dyeo@mtiemail.com> for custom AM3517 board
+ * with support for WLAN-device reset based on board-zoom3.c
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as  published by the
@@ -32,6 +33,7 @@
 #include <linux/i2c/pca953x.h>
 #include <linux/regulator/machine.h>
 #include <linux/can/platform/ti_hecc.h>
+#include <linux/delay.h>
 
 #include <mach/hardware.h>
 #include <mach/am35xx.h>
@@ -46,6 +48,9 @@
 #include <plat/display.h>
 #include <plat/gpmc.h>
 #include <plat/nand.h>
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+#include <plat/wifi_tiwlan.h>
+#endif
 
 #include <linux/spi/spi.h>
 #include <plat/mcspi.h>
@@ -55,6 +60,7 @@
 #include <media/tvp514x.h>
 #include <media/ti-media/vpfe_capture.h>
 
+#include "mmc-am3517evm.h"
 #include "mux.h"
 
 #include "mux_NDU.h"		// DCY
@@ -327,6 +333,61 @@ static int __init am3517_evm_i2c_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_1273
+void wlan_1273_reset()
+{
+	/* Pulse the WLAN_EN and BT_EN pins high, then low to place in low-power mode */
+	if (gpio_request(OMAP_AM3517EVM_WIFI_PMENA_GPIO, "WLAN_EN") != 0)
+		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_WIFI_PMENA_GPIO);
+	gpio_direction_output(OMAP_AM3517EVM_WIFI_PMENA_GPIO, 1);
+
+	if (gpio_request(OMAP_AM3517EVM_BT_EN_GPIO, "BT_EN") != 0)
+		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_EN_GPIO);
+	gpio_direction_output(OMAP_AM3517EVM_BT_EN_GPIO, 1);
+
+	if (gpio_request(OMAP_AM3517EVM_BT_WAKEUP_GPIO, "BT_WAKEUP") != 0)
+		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_WAKEUP_GPIO);
+	gpio_direction_output(OMAP_AM3517EVM_BT_WAKEUP_GPIO, 1);
+
+	if (gpio_request(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO, "BT_HOST_WAKE") != 0)
+		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_HOST_WAKE_GPIO);
+	gpio_direction_input(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO);
+
+	if (gpio_request(OMAP_AM3517EVM_FM_EN_GPIO, "FM_EN") != 0)
+		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_FM_EN_GPIO);
+	gpio_direction_output(OMAP_AM3517EVM_FM_EN_GPIO, 1);
+
+	if (gpio_request(OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO, "LVLSHFT_OE") != 0)
+		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO);
+	gpio_direction_output(OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO, 0);
+
+	printk("sleeping\n");
+	msleep(10);
+
+	gpio_set_value( OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO, 0 );
+	gpio_set_value( OMAP_AM3517EVM_WIFI_PMENA_GPIO, 0 );
+	gpio_set_value( OMAP_AM3517EVM_BT_EN_GPIO, 0 );
+	gpio_set_value( OMAP_AM3517EVM_FM_EN_GPIO, 0 );
+
+	msleep(1);
+
+	gpio_set_value( OMAP_AM3517EVM_WIFI_PMENA_GPIO, 1 );
+	gpio_set_value( OMAP_AM3517EVM_BT_WAKEUP_GPIO, 1 );
+	msleep(10);
+	gpio_set_value( OMAP_AM3517EVM_BT_EN_GPIO, 1 );
+
+	/* export the BT pins */
+	gpio_export(OMAP_AM3517EVM_BT_EN_GPIO, 0);
+	gpio_export(OMAP_AM3517EVM_BT_WAKEUP_GPIO, 0);
+	gpio_export(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO, 0);
+
+
+
+	return;
+}
+#else
+#define wlan_1273_reset() do { } while (0)
+#endif
 
 
 /*
@@ -348,17 +409,6 @@ static void __init am3517_evm_init_irq(void)
 	omap_gpio_init();
 }
 
-static struct ehci_hcd_omap_platform_data ehci_pdata __initdata = {
-	.port_mode[0] = EHCI_HCD_OMAP_MODE_PHY,
-	.port_mode[1] = EHCI_HCD_OMAP_MODE_UNKNOWN,
-	.port_mode[2] = EHCI_HCD_OMAP_MODE_UNKNOWN,
-
-	.phy_reset  = true,
-	.reset_gpio_port[0]  = 57,
-	.reset_gpio_port[1]  = -EINVAL,
-	.reset_gpio_port[2]  = -EINVAL
-};
-
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata =
 {
@@ -368,6 +418,58 @@ static struct omap_board_mux board_mux[] __initdata =
 #else
 #define board_mux	NULL
 #endif
+
+static struct am3517_hsmmc_info mmc[] = {
+	{
+		.mmc            = 1,
+		.wires          = 4,
+		.gpio_cd        = 127,
+		.gpio_wp        = 126,
+	},
+	{
+		.mmc            = 2,
+		.wires          = 4,
+		.gpio_cd        = -EINVAL,
+		.gpio_wp        = -EINVAL,
+	},
+	{}      /* Terminator */
+};
+
+static void wlan_mux_init()
+{
+	omap_mux_init_signal("sdmmc2_clk", OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("sdmmc2_cmd", OMAP_PIN_INPUT_PULLUP);	
+	omap_mux_init_signal("sdmmc2_dat0", OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("sdmmc2_dat1", OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("sdmmc2_dat2", OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("sdmmc2_dat3", OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("sdmmc2_dat4.sdmmc2_dir_dat0", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("sdmmc2_dat5.sdmmc2_dir_dat1", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("sys_boot4.sdmmc2_dir_dat2", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("sys_boot5.sdmmc2_dir_dat3", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("sdmmc2_dat6.sdmmc2_dir_cmd", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("sdmmc2_dat7.sdmmc2_clkin", OMAP_PIN_INPUT);
+
+	omap_mux_init_gpio(OMAP_AM3517EVM_WIFI_PMENA_GPIO, OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(OMAP_AM3517EVM_WIFI_IRQ_GPIO, OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_gpio(OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO, OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(OMAP_AM3517EVM_BT_EN_GPIO, OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(OMAP_AM3517EVM_BT_WAKEUP_GPIO, OMAP_PIN_OUTPUT); 
+	omap_mux_init_gpio(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO, OMAP_PIN_INPUT);
+	omap_mux_init_gpio(OMAP_AM3517EVM_FM_EN_GPIO, OMAP_PIN_OUTPUT);
+
+	omap_mux_init_signal("uart2_cts.uart2_cts", OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("uart2_rts.uart2_rts", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("uart2_tx.uart2_tx", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("uart2_rx.uart2_rx", OMAP_PIN_INPUT);
+
+	omap_mux_init_signal("mcbsp3_fsx.mcbsp3_fsx", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("mcbsp3_clkx.mcbsp3_clkx", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("mcbsp3_dr.mcbsp3_dr", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("mcbsp3_dx.mcbsp3_dx", OMAP_PIN_OUTPUT);
+
+
+}
 
 static void __init am3517_evm_init(void)
 {
@@ -379,13 +481,12 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 	platform_add_devices(am3517_evm_devices,
 				ARRAY_SIZE(am3517_evm_devices));
 
+#ifdef CONFIG_WLAN_1273
+	wlan_1273_reset();
+#endif
 	omap_serial_init();
 	am3517evm_flash_init();
 	usb_musb_init();
-
-	/* Configure GPIO for EHCI port */
-	omap_mux_init_gpio(57, OMAP_PIN_OUTPUT);
-	usb_ehci_init(&ehci_pdata);
 
 	// SPI Bus Info
 	spi_register_board_info(ndu_spi_board_info,
@@ -409,6 +510,11 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 
 	/*Ethernet*/
 	am3517_evm_ethernet_init(&am3517_evm_emac_pdata);
+
+	wlan_mux_init();
+
+	/* MMC init function */
+	am3517_mmc_init(mmc);
 
 }
 
