@@ -1133,8 +1133,9 @@ uart_ioctl(struct tty_struct *tty, struct file *filp, unsigned int cmd,
 		ret = uart_set_packet_size(state, pktsize);
 		if (pktsize != 0)
 		{
-			serial8250_clear_fifos(port);	// no FIFOs in this mode  TODO: how to put FIFOs back on?
-			printk("Disabled FIFOs for IRQ %d\n", port->irq);
+		//	serial8250_clear_fifos(port);	// no FIFOs in this mode  TODO: how to put FIFOs back on?
+		//	printk("Disabled FIFOs for IRQ %d\n", port->irq);
+			printk("TIOPACKETSZ flag found for IRQ %d\n", port->irq);
 		}
 		break;
 	}

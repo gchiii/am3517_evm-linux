@@ -36,6 +36,7 @@ static struct usb_device_id whitelist_table [] = {
 { USB_DEVICE(0x0525, 0xa4a1), },
 /* Linux-USB CDC Ethernet + RNDIS gadget */
 { USB_DEVICE(0x0525, 0xa4a2), },
+{ USB_DEVICE(0x0B95, 0x7720), },	// DCY-  Manufacturer: ASIX Elec. Corp., Product: AX88x72A
 #endif
 
 #if	defined(CONFIG_USB_TEST) || defined(CONFIG_USB_TEST_MODULE)

@@ -38,6 +38,9 @@
 #include <plat/control.h>
 #include <plat/mux.h>
 
+
+#include <linux/delay.h>
+
 #include "mux.h"
 
 #define OMAP_MUX_BASE_OFFSET		0x30	/* Offset from CTRL_BASE */
@@ -69,8 +72,9 @@ void omap_mux_write(u16 val, u16 reg)
 
 void omap_mux_write_array(struct omap_board_mux *board_mux)
 {
-	while (board_mux->reg_offset !=  OMAP_MUX_TERMINATOR) {
-		omap_mux_write(board_mux->value, board_mux->reg_offset);
+	while (board_mux->reg_offset !=  OMAP_MUX_TERMINATOR) 
+	{
+		omap_mux_write(board_mux->value, board_mux->reg_offset - BASE_DIFF);	// DCY
 		board_mux++;
 	}
 }
@@ -994,6 +998,9 @@ int __init omap_mux_init(u32 mux_pbase, u32 mux_size,
 
 	mux_phys = mux_pbase;
 	mux_base = ioremap(mux_pbase, mux_size);
+	
+	printk("MUX: mux_phys=%lX mux_base=%lX\n",(long unsigned int)mux_phys,(long unsigned int)mux_base); // DCY
+	
 	if (!mux_base) {
 		printk(KERN_ERR "mux: Could not ioremap\n");
 		return -ENODEV;

@@ -97,7 +97,7 @@ void omap_irq_get_cfg(int irq)
 
 		offset = INTC_ILR0 + (irq * 0x4);
 		val = intc_bank_read_reg(&irq_banks[0], offset);
-		printk("IRQ %d priority %lX\n", irq, val);
+		//printk("IRQ %d priority %lX\n", irq, val);
 }
 
 

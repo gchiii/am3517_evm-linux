@@ -26,7 +26,7 @@
 #include <linux/ctype.h>
 #include <linux/string.h>
 
-#if 0
+#if 1	// DCY
 #define DEBUGP printk
 #else
 #define DEBUGP(fmt, a...)
@@ -147,6 +147,7 @@ int parse_args(const char *name,
 		args = next_arg(args, &param, &val);
 		irq_was_disabled = irqs_disabled();
 		ret = parse_one(param, val, params, num, unknown);
+		DEBUGP("arg: %s", param);	// DCY
 		if (irq_was_disabled && !irqs_disabled()) {
 			printk(KERN_WARNING "parse_args(): option '%s' enabled "
 					"irq's!\n", param);

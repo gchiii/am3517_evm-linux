@@ -22,6 +22,8 @@
    SMBus 2.0 support by Mark Studebaker <mdsxyz123@yahoo.com> and
    Jean Delvare <khali@linux-fr.org> */
 
+#define DEBUG 	// DCY
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>

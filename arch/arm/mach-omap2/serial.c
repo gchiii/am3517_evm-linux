@@ -117,11 +117,11 @@ static struct plat_serial8250_port serial_platform_data2[] = {
 	}
 };
 
-#ifdef CONFIG_ARCH_OMAP4
+// DCY   #ifdef CONFIG_ARCH_OMAP4
 static struct plat_serial8250_port serial_platform_data3[] = {
 	{
 		.mapbase	= OMAP_UART4_BASE,
-		.irq		= 70,
+		.irq		= 84,
 		.flags		= UPF_BOOT_AUTOCONF,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
@@ -130,7 +130,7 @@ static struct plat_serial8250_port serial_platform_data3[] = {
 		.flags		= 0
 	}
 };
-#endif
+//#endif
 static inline unsigned int __serial_read_reg(struct uart_port *up,
 					   int offset)
 {
@@ -574,17 +574,17 @@ static struct omap_uart_state omap_uart[] = {
 			},
 		},
 	},
-#ifdef CONFIG_ARCH_OMAP4
+// DCY #ifdef CONFIG_ARCH_OMAP4
 	{
 		.pdev = {
 			.name			= "serial8250",
-			.id			= 3,
+			.id			= PLAT8250_DEV_PLATFORM_UART4,
 			.dev			= {
 				.platform_data	= serial_platform_data3,
 			},
 		},
 	},
-#endif
+//#endif
 };
 
 /*

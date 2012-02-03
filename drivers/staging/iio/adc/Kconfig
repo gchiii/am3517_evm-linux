@@ -21,3 +21,4 @@ config MAX1363_RING_BUFFER
 	help
 	  Say yes here to include ring buffer support in the MAX1363
 	  ADC driver.
+

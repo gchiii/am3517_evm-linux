@@ -29,6 +29,7 @@ int davinci_intc_type;
 
 void davinci_get_mac_addr(struct memory_accessor *mem_acc, void *context)
 {
+
 	char *mac_addr = davinci_soc_info.emac_pdata->mac_addr;
 	off_t offset = (off_t)context;
 

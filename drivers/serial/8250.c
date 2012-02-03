@@ -637,8 +637,7 @@ static unsigned int serial_icr_read(struct uart_8250_port *up, int offset)
 /*
  * FIFO support.
  */
-//static void serial8250_clear_fifos(struct uart_8250_port *p)
-void serial8250_clear_fifos(struct uart_8250_port *p)   // DCY
+static void serial8250_clear_fifos(struct uart_8250_port *p)
 {
 	if (p->capabilities & UART_CAP_FIFO) {
 		serial_outp(p, UART_FCR, UART_FCR_ENABLE_FIFO);
@@ -1384,6 +1383,7 @@ static void serial8250_enable_ms(struct uart_port *port)
 	serial_out(up, UART_IER, up->ier);
 }
 
+#if 0
 // DCY - new routine
 #include <linux/ktime.h>
 #include <asm/gpio.h>
@@ -1437,10 +1437,16 @@ static void receive_packet(struct uart_8250_port *up, unsigned int *status)
 			*/
 			if (statusreg & UART_LSR_DR)
 			{
-				gpio_set_value(174, 0);
-//                packet_data[i] = serial_in(up, UART_RX);
-				packet_data[0] = serial_in(up, UART_RX);
-				gpio_set_value(174, 1);
+				gpio_set_value(174, 0);		// DCY-DEBUG ONLY
+                packet_data[i] = serial_in(up, UART_RX);
+				gpio_set_value(174, 1);		// DCY-DEBUG ONLY
+				if (i == 2 && packet_data[2] > 170) // DCY-DEBUG ONLY
+				{
+					printk("R-wave found\n");
+					gpio_set_value(171, 1);
+					udelay(10);
+					gpio_set_value(171, 0);
+				}
 				break;
 			}
 		  //  udelay(1);
@@ -1508,7 +1514,9 @@ static void receive_packet(struct uart_8250_port *up, unsigned int *status)
 	*status = serial_in(up, UART_LSR);
  //   gpio_set_value(174, 0);
 }
+#endif
 
+//static unsigned char packetcnt = 0;	// DCY - DEBUG ONLY
 
 static void
 receive_chars(struct uart_8250_port *up, unsigned int *status)
@@ -1576,6 +1584,29 @@ receive_chars(struct uart_8250_port *up, unsigned int *status)
 			goto ignore_char;
 
 		uart_insert_char(&up->port, lsr, UART_LSR_OE, ch, flag);
+
+#if 0
+		if (up->port.unused1 != 0)	// DCY
+		{
+			if (ch == 0xFE)
+				packetcnt=1;
+			else
+				packetcnt++;
+			if (packetcnt == 3)
+			{
+				static unsigned char last_pt;
+				int slope = last_pt - ch;
+				if (ch > 170 && ((slope == 0) || (slope == -1)))
+				{
+					gpio_set_value(174, 1);
+					udelay(10);
+					gpio_set_value(174, 0);
+				}
+				last_pt = ch;
+			}
+		}
+#endif	
+
 
 ignore_char:
 		lsr = serial_inp(up, UART_LSR);
@@ -1657,24 +1688,15 @@ static void serial8250_handle_port(struct uart_8250_port *up)
 
 	spin_lock_irqsave(&up->port.lock, flags);
 
-	if (up->port.unused1 != 0)	// DCY
-	{
-		receive_packet(up, &status);
-		if (status & UART_LSR_THRE)
-			transmit_chars(up);
-	}
-	else
-	{
-		status = serial_inp(up, UART_LSR);
+	status = serial_inp(up, UART_LSR);
+	DEBUG_INTR("status = %x...", status);
 
-		DEBUG_INTR("status = %x...", status);
+	if (status & (UART_LSR_DR | UART_LSR_BI))
+		receive_chars(up, &status);
+	check_modem_status(up);
+	if (status & UART_LSR_THRE)
+		transmit_chars(up);
 
-		if (status & (UART_LSR_DR | UART_LSR_BI))
-			receive_chars(up, &status);
-		check_modem_status(up);
-		if (status & UART_LSR_THRE)
-			transmit_chars(up);
-	}
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
 
@@ -1697,8 +1719,6 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 	struct irq_info *i = dev_id;
 	struct list_head *l, *end = NULL;
 	int pass_counter = 0, handled = 0;
-
-	gpio_set_value(174, 1); // DCY
 
 	DEBUG_INTR("serial8250_interrupt(%d)...", irq);
 
@@ -1752,8 +1772,6 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 	spin_unlock(&i->lock);
 
 	DEBUG_INTR("end.\n");
-
-	gpio_set_value(174, 0); // DCY
 
 	return IRQ_RETVAL(handled);
 }
@@ -2547,7 +2565,7 @@ serial8250_set_termios(struct uart_port *port, struct ktermios *termios,
 	if (up->port.type != PORT_16750) {
 		if (fcr & UART_FCR_ENABLE_FIFO) {
 			/* emulated UARTs (Lucent Venus 167x) need two steps */
-			printk("UART(irq %d) enable FIFO size of %d\n", up->port.irq, up->port.fifosize );  // DCY
+			// printk("UART(irq %d) enable FIFO size of %d\n", up->port.irq, up->port.fifosize );  // DCY
 			serial_outp(up, UART_FCR, UART_FCR_ENABLE_FIFO);
 		}
 		serial_outp(up, UART_FCR, fcr);		/* set fcr */

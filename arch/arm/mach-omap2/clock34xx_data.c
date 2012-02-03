@@ -2566,6 +2566,7 @@ static struct clk uart3_fck = {
 	.recalc		= &followparent_recalc,
 };
 
+
 static struct clk gpt2_fck = {
 	.name		= "gpt2_fck",
 	.ops		= &clkops_omap2_dflt_wait,
@@ -3251,6 +3252,16 @@ static struct clk uart4_ick = {
 	.recalc     = &followparent_recalc,
 };
 
+static struct clk uart4_fck = {	// DCY
+	.name		= "uart4_fck",
+	.ops		= &clkops_omap2_dflt_wait,
+	.parent		= &core_48m_fck,
+	.enable_reg	= OMAP_CM_REGADDR(CORE_MOD, CM_FCLKEN1),
+	.enable_bit	= AM35XX_EN_UART4_SHIFT,
+	.clkdm_name	= "core_l4_clkdm",
+	.recalc		= &followparent_recalc,
+}; 
+
 /*
  * clkdev
  */
@@ -3484,6 +3495,7 @@ static struct omap_clk omap3xxx_clks[] = {
 	CLK("vpfe-capture",	"master",		&vpfe_ick,	CK_AM35XX),
 	CLK("vpfe-capture",	"slave",		&vpfe_fck,	CK_AM35XX),
 	CLK(NULL,			"uart4_ick",	&uart4_ick, CK_AM35XX),
+	CLK(NULL,			"uart4_fck",	&uart4_fck,	CK_AM35XX),	// DCY
 	CLK("musb_hdrc",    "ick",      	&hsotgusb_ick_am35xx, CK_AM35XX),
 	CLK("musb_hdrc",    "fck",      	&hsotgusb_fck_am35xx, CK_AM35XX),
 };

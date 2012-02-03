@@ -849,14 +849,20 @@ static noinline int init_post(void)
 	 * The Bourne shell can be used instead of init if we are
 	 * trying to recover a really broken machine.
 	 */
-	if (execute_command) {
+	if (execute_command) 
+	{
+printk("Started run_init_process\n");
 		run_init_process(execute_command);
 		printk(KERN_WARNING "Failed to execute %s.  Attempting "
 					"defaults...\n", execute_command);
 	}
+printk("Started /sbin/init\n");
 	run_init_process("/sbin/init");
+printk("Started /etc/init\n");
 	run_init_process("/etc/init");
+printk("Started /bin/init\n");
 	run_init_process("/bin/init");
+printk("Started /bin/sh\n");
 	run_init_process("/bin/sh");
 
 	panic("No init found.  Try passing init= option to kernel.");
