@@ -13,7 +13,7 @@
 
 extern int __init omap_sram_init(void);
 
-extern void *sram_get_base_va(void);
+extern void __init *sram_get_base_va(void);
 extern void * omap_sram_push(void * start, unsigned long size);
 extern void omap_sram_reprogram_clock(u32 dpllctl, u32 ckctl);
 
