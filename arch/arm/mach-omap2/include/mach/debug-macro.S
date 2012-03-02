@@ -36,6 +36,9 @@
 		add	\rx, \rx, #0x00fb0000	@ UART 3
 		add	\rx, \rx, #0x00006000
 #endif
+#ifdef CONFIG_OMAP_LL_DEBUG_UART4
+		add	\rx, \rx, #0x00034000	@ UART 4        DCY
+#endif
 #endif
 		.endm
 
