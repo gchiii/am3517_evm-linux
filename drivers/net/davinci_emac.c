@@ -1022,21 +1022,6 @@ static void emac_add_mcast(struct emac_priv *priv, u32 action, u8 *mac_addr)
 {
 	struct device *emac_dev = &priv->ndev->dev;
 	int update = -1;
-	if (mac_addr == 0)
-		printk("MAC ptr NULL ****************\n");// DCY
-	else
-	
-		printk(KERN_WARNING "MAC (%x:%x:%x:%x:%x:%x) emac_add_mcast ************\n", 
-			mac_addr[0],
-			mac_addr[1],
-			mac_addr[2],
-			mac_addr[3],
-			mac_addr[4],
-			mac_addr[5]
-			);		// DCY
-
-
-
 
 	switch (action) {
 	case EMAC_MULTICAST_ADD:
@@ -1933,8 +1918,6 @@ static void emac_setmac(struct emac_priv *priv, u32 ch, char *mac_addr)
 {
 	struct device *emac_dev = &priv->ndev->dev;
 
-printk("Set MAC ********************");	// DCY
-
 	if (priv->rx_addr_type == 0) {
 		emac_set_type0addr(priv, ch, mac_addr);
 	} else if (priv->rx_addr_type == 1) {
@@ -1965,8 +1948,6 @@ static int emac_dev_setmac_addr(struct net_device *ndev, void *addr)
 	struct emac_rxch *rxch = priv->rxch[EMAC_DEF_RX_CH];
 	struct device *emac_dev = &priv->ndev->dev;
 	struct sockaddr *sa = addr;
-
-printk("Set dev MAC ********************");	// DCY
 
 	if (!is_valid_ether_addr(sa->sa_data))
 		return -EINVAL;
@@ -2813,19 +2794,6 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	}
 
 	/* MAC addr and PHY mask , RMII enable info from platform_data */
-	
-	
-			printk(KERN_WARNING "MAC (%x:%x:%x:%x:%x:%x) pdata->mac_addr ************\n", 
-			pdata->mac_addr[0],
-			pdata->mac_addr[1],
-			pdata->mac_addr[2],
-			pdata->mac_addr[3],
-			pdata->mac_addr[4],
-			pdata->mac_addr[5]
-			);		// DCY
-
-	
-	
 	memcpy(priv->mac_addr, pdata->mac_addr, 6);
 	priv->phy_mask = pdata->phy_mask;
 	priv->rmii_en = pdata->rmii_en;
@@ -2884,17 +2852,6 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 
 	if (!is_valid_ether_addr(priv->mac_addr)) {
 		/* Use random MAC if none passed */
-		
-		
-		printk(KERN_WARNING "MAC (%x:%x:%x:%x:%x:%x) invalid\n", 
-			priv->mac_addr[0],
-			priv->mac_addr[1],
-			priv->mac_addr[2],
-			priv->mac_addr[3],
-			priv->mac_addr[4],
-			priv->mac_addr[5]
-			);		// DCY
-			
 		random_ether_addr(priv->mac_addr);
 		printk(KERN_WARNING "%s: using random MAC addr: %pM\n",
 				__func__, priv->mac_addr);
