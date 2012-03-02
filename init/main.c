@@ -851,18 +851,18 @@ static noinline int init_post(void)
 	 */
 	if (execute_command) 
 	{
-printk("Started run_init_process\n");
+printk("Started run_init_process\n");	// DCY
 		run_init_process(execute_command);
 		printk(KERN_WARNING "Failed to execute %s.  Attempting "
 					"defaults...\n", execute_command);
 	}
-printk("Started /sbin/init\n");
+printk("Started /sbin/init\n");		// DCY
 	run_init_process("/sbin/init");
-printk("Started /etc/init\n");
+printk("Started /etc/init\n");		// DCY
 	run_init_process("/etc/init");
-printk("Started /bin/init\n");
+printk("Started /bin/init\n");		// DCY
 	run_init_process("/bin/init");
-printk("Started /bin/sh\n");
+printk("Started /bin/sh\n");		// DCY
 	run_init_process("/bin/sh");
 
 	panic("No init found.  Try passing init= option to kernel.");

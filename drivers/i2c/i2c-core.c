@@ -22,7 +22,7 @@
    SMBus 2.0 support by Mark Studebaker <mdsxyz123@yahoo.com> and
    Jean Delvare <khali@linux-fr.org> */
 
-#define DEBUG 	// DCY
+//#define DEBUG
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -1114,7 +1114,6 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 				(msgs[ret].flags & I2C_M_RECV_LEN) ? "+" : "");
 		}
 #endif
-
 		if (in_atomic() || irqs_disabled()) {
 			ret = rt_mutex_trylock(&adap->bus_lock);
 			if (!ret)
@@ -1131,7 +1130,9 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 			if (ret != -EAGAIN)
 				break;
 			if (time_after(jiffies, orig_jiffies + adap->timeout))
+			{
 				break;
+			}
 		}
 		rt_mutex_unlock(&adap->bus_lock);
 
@@ -1819,7 +1820,6 @@ static s32 i2c_smbus_xfer_emulated(struct i2c_adapter * adapter, u16 addr,
 		if (msg[num-1].flags & I2C_M_RD)
 			msg[num-1].len++;
 	}
-
 	status = i2c_transfer(adapter, msg, num);
 	if (status < 0)
 		return status;
@@ -1855,6 +1855,7 @@ static s32 i2c_smbus_xfer_emulated(struct i2c_adapter * adapter, u16 addr,
 		}
 	return 0;
 }
+
 
 /**
  * i2c_smbus_xfer - execute SMBus protocol operations
@@ -1892,13 +1893,16 @@ s32 i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr, unsigned short flags,
 				break;
 			if (time_after(jiffies,
 				       orig_jiffies + adapter->timeout))
+			{
 				break;
+			}
 		}
 		rt_mutex_unlock(&adapter->bus_lock);
 	} else
+	{
 		res = i2c_smbus_xfer_emulated(adapter,addr,flags,read_write,
 					      command, protocol, data);
-
+	}
 	return res;
 }
 EXPORT_SYMBOL(i2c_smbus_xfer);
