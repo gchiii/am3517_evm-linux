@@ -32,6 +32,7 @@
 #include <linux/i2c/pca953x.h>
 #include <linux/regulator/machine.h>
 #include <linux/can/platform/ti_hecc.h>
+#include <linux/delay.h>
 
 #include <mach/hardware.h>
 #include <mach/am35xx.h>
@@ -54,7 +55,9 @@
 
 #include <media/tvp514x.h>
 #include <media/ti-media/vpfe_capture.h>
+#include <linux/wl12xx.h>
 
+#include "mmc-am3517evm.h"
 #include "mux.h"
 
 #include "mux_NDU.h"		// DCY
@@ -197,21 +200,6 @@ static struct emac_platform_data am3517_evm_emac_pdata = {
 	.mdio_max_freq  = AM35XX_EVM_MDIO_FREQUENCY,
 	.rmii_en        = 1,
 };
-
-static int __init eth_addr_setup(char *str)
-{
-	int i;
-
-	if(str == NULL)
-		return 0;
-	for(i = 0; i <  ETH_ALEN; i++)
-		am3517_evm_emac_pdata.mac_addr[i] = simple_strtol(&str[i*3],
-							(char **)NULL, 16);
-	return 1;
-}
-
-/* Get MAC address from kernel boot parameter eth=AA:BB:CC:DD:EE:FF */
-__setup("eth=", eth_addr_setup);
 
 static struct resource am3517_emac_resources[] = {
 	{
@@ -425,7 +413,7 @@ int wl12xx_set_power(int slot, int power_on)
 
 	return 0;
 }
-void wlan_1273_reset()
+void wlan_1273_reset(void)
 {
 	/* Pulse the WLAN_EN and BT_EN pins high, then low to place in low-power mode */
 	if (gpio_request(OMAP_AM3517EVM_WIFI_PMENA_GPIO, "WLAN_EN") != 0)
@@ -476,7 +464,23 @@ void wlan_1273_reset()
 
 	return;
 }
-static void wlan_mux_init()
+static struct am3517_hsmmc_info mmc[] = {
+	{
+		.mmc            = 1,
+		.wires          = 4,
+		.gpio_cd        = 127,
+		.gpio_wp        = 126,
+	},
+	{
+		.mmc            = 2,
+		.wires          = 4,
+		.gpio_cd        = -EINVAL,
+		.gpio_wp        = -EINVAL,
+	},
+	{}      /* Terminator */
+};
+
+static void wlan_mux_init(void)
 {
 	omap_mux_init_signal("sdmmc2_clk", OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_signal("sdmmc2_cmd", OMAP_PIN_INPUT_PULLUP);	
@@ -514,8 +518,6 @@ static void wlan_mux_init()
 
 struct wl12xx_platform_data omap_zoom_wlan_data __initdata = {
 	.irq = OMAP_GPIO_IRQ(OMAP_AM3517EVM_WIFI_IRQ_GPIO),
-	/* ZOOM ref clock is 26 MHz */
-	.board_ref_clock = 2,
 };
 
 
