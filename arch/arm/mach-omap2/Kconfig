@@ -165,6 +165,14 @@ config MACH_OMAP_ZOOM3
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 	select OMAP_PACKAGE_CBP
 
+config WIFI_CONTROL_FUNC
+	bool "Enable WiFi control function abstraction"
+	select MMC_EMBEDDED_SDIO
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	help
+	Enables Power/Reset/Carddetect function abstraction
+
 config MACH_CM_T35
 	bool "CompuLab CM-T35 module"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX

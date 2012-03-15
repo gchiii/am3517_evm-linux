@@ -533,6 +533,7 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 	platform_add_devices(am3517_evm_devices,
 				ARRAY_SIZE(am3517_evm_devices));
 
+	wlan_1273_reset();
 	omap_serial_init();
 	am3517evm_flash_init();
 	usb_musb_init();
@@ -565,6 +566,9 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 	/*Ethernet*/
 	am3517_evm_ethernet_init(&am3517_evm_emac_pdata);
 
+
+	/* MMC init function */
+	am3517_mmc_init(mmc);
 }
 
 static void __init am3517_evm_map_io(void)

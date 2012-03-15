@@ -59,7 +59,7 @@ static struct mmc_controller {
 	struct omap_mmc_platform_data	*mmc;
 	u8		vmmc_dev_grp;
 	u8		vmmc_dedicated;
-	char		name[HSMMC_NAME_LEN];
+	char		name[HSMMC_NAME_LEN + 1];
 } hsmmc[] = {
 	{
 		.vmmc_dev_grp		= VMMC1_DEV_GRP,
@@ -107,12 +107,15 @@ static int mmc_late_init(struct device *dev)
 	int ret = 0;
 	int i;
 
-	ret = gpio_request(mmc->slots[0].switch_pin, "mmc_cd");
-	if (ret)
-		goto done;
-	ret = gpio_direction_input(mmc->slots[0].switch_pin);
-	if (ret)
-		goto err;
+	/* MMC/SD/SDIO doesn't require a card detect switch */
+	if (gpio_is_valid(mmc->slots[0].switch_pin)) {
+		ret = gpio_request(mmc->slots[0].switch_pin, "mmc_cd");
+		if (ret)
+			goto done;
+		ret = gpio_direction_input(mmc->slots[0].switch_pin);
+		if (ret)
+			goto err;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(hsmmc); i++) {
 		if (hsmmc[i].name == mmc->slots[0].name) {
@@ -204,7 +207,12 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 			return;
 		}
 
-		sprintf(mmc_control->name, "mmc%islot%i", c->mmc, 1);
+		if (c->name)
+			strncpy(mmc_control->name, c->name, HSMMC_NAME_LEN);
+		else
+			snprintf(mmc_control->name, ARRAY_SIZE(mmc_control->name),
+				"mmc%islot%i", c->mmc, 1);
+
 		mmc->slots[0].name = mmc_control->name;
 		mmc->nr_slots = 1;
 		mmc->slots[0].ocr_mask = MMC_VDD_165_195 |
@@ -214,9 +222,9 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 		mmc->slots[0].wires = c->wires;
 		mmc->slots[0].internal_clock = !c->ext_clock;
 		mmc->dma_mask = 0xffffffff;
+		mmc->init = mmc_late_init;
 
-		if (1) {
-			mmc->init = mmc_late_init;
+		if (gpio_is_valid(c->gpio_cd)) {
 			mmc->cleanup = mmc_cleanup;
 			mmc->suspend = mmc_suspend;
 			mmc->resume = mmc_resume;
@@ -247,7 +255,9 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 			mmc->slots[0].set_power = mmc1_set_power;
 			break;
 		case 2:
+			/* off-chip level shifting, or none */
 			mmc->slots[0].set_power = mmc2_set_power;
+			mmc->slots[0].ocr_mask = MMC_VDD_165_195;
 			break;
 		default:
 			pr_err("MMC%d configuration not supported!\n", c->mmc);
