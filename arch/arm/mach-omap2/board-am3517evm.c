@@ -466,12 +466,6 @@ void wlan_1273_reset(void)
 }
 static struct am3517_hsmmc_info mmc[] = {
 	{
-		.mmc            = 1,
-		.wires          = 4,
-		.gpio_cd        = 127,
-		.gpio_wp        = 126,
-	},
-	{
 		.mmc            = 2,
 		.wires          = 4,
 		.gpio_cd        = -EINVAL,
@@ -518,6 +512,7 @@ static void wlan_mux_init(void)
 
 struct wl12xx_platform_data omap_zoom_wlan_data __initdata = {
 	.irq = OMAP_GPIO_IRQ(OMAP_AM3517EVM_WIFI_IRQ_GPIO),
+	.board_ref_clock = 1,
 };
 
 
@@ -541,7 +536,6 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 	/* Configure GPIO for EHCI port */
 	omap_mux_init_gpio(57, OMAP_PIN_OUTPUT);
 	usb_ehci_init(&ehci_pdata);
-	wlan_mux_init();
 
 	// SPI Bus Info
 	spi_register_board_info(ndu_spi_board_info,
@@ -566,6 +560,7 @@ printk("Setup Board Mux (table size=%d)\n", sizeof(board_mux));	// DCY
 	/*Ethernet*/
 	am3517_evm_ethernet_init(&am3517_evm_emac_pdata);
 
+	wlan_mux_init();
 
 	/* MMC init function */
 	am3517_mmc_init(mmc);
