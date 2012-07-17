@@ -420,45 +420,45 @@ void wlan_1273_reset(void)
 		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_WIFI_PMENA_GPIO);
 	gpio_direction_output(OMAP_AM3517EVM_WIFI_PMENA_GPIO, 1);
 
-	if (gpio_request(OMAP_AM3517EVM_BT_EN_GPIO, "BT_EN") != 0)
-		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_EN_GPIO);
-	gpio_direction_output(OMAP_AM3517EVM_BT_EN_GPIO, 1);
+//	if (gpio_request(OMAP_AM3517EVM_BT_EN_GPIO, "BT_EN") != 0)
+//		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_EN_GPIO);
+//	gpio_direction_output(OMAP_AM3517EVM_BT_EN_GPIO, 1);
 
-	if (gpio_request(OMAP_AM3517EVM_BT_WAKEUP_GPIO, "BT_WAKEUP") != 0)
-		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_WAKEUP_GPIO);
-	gpio_direction_output(OMAP_AM3517EVM_BT_WAKEUP_GPIO, 1);
+//	if (gpio_request(OMAP_AM3517EVM_BT_WAKEUP_GPIO, "BT_WAKEUP") != 0)
+//		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_WAKEUP_GPIO);
+//	gpio_direction_output(OMAP_AM3517EVM_BT_WAKEUP_GPIO, 1);
 
-	if (gpio_request(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO, "BT_HOST_WAKE") != 0)
-		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_HOST_WAKE_GPIO);
-	gpio_direction_input(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO);
+//	if (gpio_request(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO, "BT_HOST_WAKE") != 0)
+//		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_BT_HOST_WAKE_GPIO);
+//	gpio_direction_input(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO);
 
-	if (gpio_request(OMAP_AM3517EVM_FM_EN_GPIO, "FM_EN") != 0)
-		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_FM_EN_GPIO);
-	gpio_direction_output(OMAP_AM3517EVM_FM_EN_GPIO, 1);
+//	if (gpio_request(OMAP_AM3517EVM_FM_EN_GPIO, "FM_EN") != 0)
+//		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_FM_EN_GPIO);
+//	gpio_direction_output(OMAP_AM3517EVM_FM_EN_GPIO, 1);
 
 	if (gpio_request(OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO, "LVLSHFT_OE") != 0)
 		pr_err("GPIO %i request failed\n", OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO);
 	gpio_direction_output(OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO, 0);
 
-	printk("sleeping\n");
-	msleep(10);
+//	printk("sleeping\n");
+//	msleep(10);
 
 	gpio_set_value( OMAP_AM3517EVM_WIFI_LVLSHFT_GPIO, 0 );
-	gpio_set_value( OMAP_AM3517EVM_WIFI_PMENA_GPIO, 0 );
-	gpio_set_value( OMAP_AM3517EVM_BT_EN_GPIO, 0 );
-	gpio_set_value( OMAP_AM3517EVM_FM_EN_GPIO, 0 );
+//	gpio_set_value( OMAP_AM3517EVM_WIFI_PMENA_GPIO, 0 );
+//	gpio_set_value( OMAP_AM3517EVM_BT_EN_GPIO, 0 );
+//	gpio_set_value( OMAP_AM3517EVM_FM_EN_GPIO, 0 );
 
-	msleep(1);
+//	msleep(1);
 
 	gpio_set_value( OMAP_AM3517EVM_WIFI_PMENA_GPIO, 1 );
-	gpio_set_value( OMAP_AM3517EVM_BT_WAKEUP_GPIO, 1 );
-	msleep(10);
-	gpio_set_value( OMAP_AM3517EVM_BT_EN_GPIO, 1 );
+//	gpio_set_value( OMAP_AM3517EVM_BT_WAKEUP_GPIO, 1 );
+//	msleep(10);
+//	gpio_set_value( OMAP_AM3517EVM_BT_EN_GPIO, 1 );
 
 	/* export the BT pins */
-	gpio_export(OMAP_AM3517EVM_BT_EN_GPIO, 0);
-	gpio_export(OMAP_AM3517EVM_BT_WAKEUP_GPIO, 0);
-	gpio_export(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO, 0);
+//	gpio_export(OMAP_AM3517EVM_BT_EN_GPIO, 0);
+//	gpio_export(OMAP_AM3517EVM_BT_WAKEUP_GPIO, 0);
+//	gpio_export(OMAP_AM3517EVM_BT_HOST_WAKE_GPIO, 0);
 
 
 
@@ -512,7 +512,7 @@ static void wlan_mux_init(void)
 
 struct wl12xx_platform_data omap_zoom_wlan_data __initdata = {
 	.irq = OMAP_GPIO_IRQ(OMAP_AM3517EVM_WIFI_IRQ_GPIO),
-	.board_ref_clock = 1,
+	.board_ref_clock = WL12XX_REFCLOCK_38
 };
 
 
