@@ -53,3 +53,6 @@ obj-$(CONFIG_WL12XX)	+= wl12xx/
 obj-$(CONFIG_WL12XX_PLATFORM_DATA)	+= wl12xx/wl12xx_platform_data.o
 
 obj-$(CONFIG_IWM)	+= iwmc3200wifi/
+
+# DCY added 5/1/12
+obj-$(CONFIG_RTL8192CU)  += rtl8192cu/
