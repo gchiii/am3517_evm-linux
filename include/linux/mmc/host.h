@@ -14,6 +14,7 @@
 #include <linux/sched.h>
 
 #include <linux/mmc/core.h>
+#include <linux/mmc/pm.h>
 
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
@@ -151,6 +152,14 @@ struct mmc_host {
 #define MMC_CAP_DISABLE		(1 << 7)	/* Can the host be disabled */
 #define MMC_CAP_NONREMOVABLE	(1 << 8)	/* Nonremovable e.g. eMMC */
 #define MMC_CAP_WAIT_WHILE_BUSY	(1 << 9)	/* Waits while card is busy */
+#define MMC_CAP_ERASE		(1 << 10)	/* Allow erase/trim commands */
+#define MMC_CAP_1_8V_DDR	(1 << 11)	/* can support */
+						/* DDR mode at 1.8V */
+#define MMC_CAP_1_2V_DDR	(1 << 12)	/* can support */
+						/* DDR mode at 1.2V */
+#define MMC_CAP_POWER_OFF_CARD	(1 << 13)	/* Can power off after boot */
+
+	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 	/* host specific block data */
 	unsigned int		max_seg_size;	/* see blk_queue_max_segment_size */
@@ -196,6 +205,8 @@ struct mmc_host {
 	unsigned int		sdio_irqs;
 	struct task_struct	*sdio_irq_thread;
 	atomic_t		sdio_irq_thread_abort;
+
+	mmc_pm_flag_t		pm_flags;	/* requested pm features */
 
 #ifdef CONFIG_LEDS_TRIGGERS
 	struct led_trigger	*led;		/* activity led */
@@ -246,8 +257,8 @@ static inline void *mmc_priv(struct mmc_host *host)
 extern int mmc_suspend_host(struct mmc_host *, pm_message_t);
 extern int mmc_resume_host(struct mmc_host *);
 
-extern void mmc_power_save_host(struct mmc_host *host);
-extern void mmc_power_restore_host(struct mmc_host *host);
+extern int mmc_power_save_host(struct mmc_host *host);
+extern int mmc_power_restore_host(struct mmc_host *host);
 
 extern void mmc_detect_change(struct mmc_host *, unsigned long delay);
 extern void mmc_request_done(struct mmc_host *, struct mmc_request *);
@@ -275,6 +286,19 @@ static inline void mmc_set_disable_delay(struct mmc_host *host,
 					 unsigned int disable_delay)
 {
 	host->disable_delay = disable_delay;
+}
+
+/* Module parameter */
+extern int mmc_assume_removable;
+
+static inline int mmc_card_is_removable(struct mmc_host *host)
+{
+	return !(host->caps & MMC_CAP_NONREMOVABLE) && mmc_assume_removable;
+}
+
+static inline int mmc_card_is_powered_resumed(struct mmc_host *host)
+{
+	return host->pm_flags & MMC_PM_KEEP_POWER;
 }
 
 #endif

@@ -24,6 +24,7 @@
 #include <linux/scatterlist.h>
 #include <linux/log2.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pm_runtime.h>
 
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
@@ -60,6 +61,7 @@ int mmc_assume_removable;
 #else
 int mmc_assume_removable = 1;
 #endif
+EXPORT_SYMBOL(mmc_assume_removable);
 module_param_named(removable, mmc_assume_removable, bool, 0644);
 MODULE_PARM_DESC(
 	removable,
@@ -575,9 +577,8 @@ int mmc_host_lazy_disable(struct mmc_host *host)
 		return 0;
 
 	if (host->disable_delay) {
-		mmc_schedule_delayed_work(&host->disable,
+		return queue_delayed_work(workqueue, &host->disable,
 				msecs_to_jiffies(host->disable_delay));
-		return 0;
 	} else
 		return mmc_host_do_disable(host, 1);
 }
@@ -1062,8 +1063,12 @@ void mmc_rescan(struct work_struct *work)
 
 	mmc_bus_get(host);
 
-	/* if there is a card registered, check whether it is still present */
-	if ((host->bus_ops != NULL) && host->bus_ops->detect && !host->bus_dead)
+	/*
+	 * if there is a _removable_ card registered, check whether it is
+	 * still present
+	 */
+	if ((host->bus_ops != NULL) && host->bus_ops->detect && !host->bus_dead
+					&& mmc_card_is_removable(host))
 		host->bus_ops->detect(host);
 
 	mmc_bus_put(host);
@@ -1153,6 +1158,9 @@ void mmc_stop_host(struct mmc_host *host)
 	cancel_delayed_work(&host->detect);
 	mmc_flush_scheduled_work();
 
+	/* clear pm flags now and let card drivers set them as needed */
+	host->pm_flags = 0;
+
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
 		if (host->bus_ops->remove)
@@ -1171,37 +1179,45 @@ void mmc_stop_host(struct mmc_host *host)
 	mmc_power_off(host);
 }
 
-void mmc_power_save_host(struct mmc_host *host)
+int mmc_power_save_host(struct mmc_host *host)
 {
+	int ret = 0;
+
 	mmc_bus_get(host);
 
 	if (!host->bus_ops || host->bus_dead || !host->bus_ops->power_restore) {
 		mmc_bus_put(host);
-		return;
+		return -EINVAL;
 	}
 
 	if (host->bus_ops->power_save)
-		host->bus_ops->power_save(host);
+		ret = host->bus_ops->power_save(host);
 
 	mmc_bus_put(host);
 
 	mmc_power_off(host);
+
+	return ret;
 }
 EXPORT_SYMBOL(mmc_power_save_host);
 
-void mmc_power_restore_host(struct mmc_host *host)
+int mmc_power_restore_host(struct mmc_host *host)
 {
+	int ret;
+
 	mmc_bus_get(host);
 
 	if (!host->bus_ops || host->bus_dead || !host->bus_ops->power_restore) {
 		mmc_bus_put(host);
-		return;
+		return -EINVAL;
 	}
 
 	mmc_power_up(host);
-	host->bus_ops->power_restore(host);
+	ret = host->bus_ops->power_restore(host);
 
 	mmc_bus_put(host);
+
+	return ret;
 }
 EXPORT_SYMBOL(mmc_power_restore_host);
 
@@ -1275,12 +1291,13 @@ int mmc_suspend_host(struct mmc_host *host, pm_message_t state)
 			mmc_claim_host(host);
 			mmc_detach_bus(host);
 			mmc_release_host(host);
+			host->pm_flags = 0;
 			err = 0;
 		}
 	}
 	mmc_bus_put(host);
 
-	if (!err)
+	if (!err && !(host->pm_flags & MMC_PM_KEEP_POWER))
 		mmc_power_off(host);
 
 	return err;
@@ -1298,8 +1315,22 @@ int mmc_resume_host(struct mmc_host *host)
 
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
-		mmc_power_up(host);
-		mmc_select_voltage(host, host->ocr);
+		if (!(host->pm_flags & MMC_PM_KEEP_POWER)) {
+			mmc_power_up(host);
+			mmc_select_voltage(host, host->ocr);
+			/*
+			 * Tell runtime PM core we just powered up the card,
+			 * since it still believes the card is powered off.
+			 * Note that currently runtime PM is only enabled
+			 * for SDIO cards that are MMC_CAP_POWER_OFF_CARD
+			 */
+			if (mmc_card_sdio(host->card) &&
+				(host->caps & MMC_CAP_POWER_OFF_CARD)) {
+				pm_runtime_disable(&host->card->dev);
+				pm_runtime_set_active(&host->card->dev);
+				pm_runtime_enable(&host->card->dev);
+			}
+ 		}
 		BUG_ON(!host->bus_ops->resume);
 		err = host->bus_ops->resume(host);
 		if (err) {

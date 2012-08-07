@@ -4,8 +4,6 @@
  * Copyright (C) 2007-2008 Texas Instruments
  * Copyright (C) 2008 Nokia Corporation
  * Author: Texas Instruments
- * Support for sdio function WLAN/BT class, and
- * populating embedded_sdio_data structure taken from mmc-twl4030.c
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,9 +21,6 @@
 #include <plat/control.h>
 #include <plat/mmc.h>
 #include <plat/board.h>
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-#include <linux/mmc/sdio_ids.h>
-#endif
 #include "mmc-am3517evm.h"
 
 #define LDO_CLR			0x00
@@ -188,39 +183,6 @@ static int mmc2_set_power(struct device *dev, int slot, int power_on, int vdd)
 
 static struct omap_mmc_platform_data *hsmmc_data[OMAP34XX_NR_MMC] __initdata;
 
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-static struct sdio_embedded_func wifi_func_array[] = {
-	{
-		.f_class = SDIO_CLASS_BT_A,
-		.f_maxblksize = 512,
-	},
-	{
-		.f_class = SDIO_CLASS_WLAN,
-		.f_maxblksize = 512,
-	},
-};
-
-static struct embedded_sdio_data omap_wifi_emb_data = {
-	.cis = {
-		.vendor = SDIO_VENDOR_ID_TI,
-		.device = SDIO_DEVICE_ID_TI_WL12xx,
-		.blksize = 512,
-		.max_dtr = 24000000,
-		},
-	.cccr = {
-		.multi_block = 1,
-		.low_speed = 0,
-		.wide_bus = 1,
-		.high_power = 0,
-		.high_speed = 0,
-		.disable_cd = 1,
-		},
-	.funcs = wifi_func_array,
-	.num_funcs = 2,
-	.quirks = MMC_QUIRK_VDD_165_195 | MMC_QUIRK_LENIENT_FUNC0,
-};
-#endif
-
 void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 {
 	struct am3517_hsmmc_info *c;
@@ -251,19 +213,6 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 			snprintf(mmc_control->name, ARRAY_SIZE(mmc_control->name),
 				"mmc%islot%i", c->mmc, 1);
 
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-		if (c->mmc == CONFIG_TIWLAN_MMC_CONTROLLER) {
-			mmc->slots[0].embedded_sdio = &omap_wifi_emb_data;
-			mmc->slots[0].register_status_notify =
-				&omap_wifi_status_register;
-			mmc->slots[0].card_detect = &omap_wifi_status;
-		}
-#else
-#ifdef CONFIG_TIWLAN_SDIO
-		if (c->mmc == CONFIG_TIWLAN_MMC_CONTROLLER)
-			mmc->name = "TIWLAN_SDIO";
-#endif
-#endif
 		mmc->slots[0].name = mmc_control->name;
 		mmc->nr_slots = 1;
 		mmc->slots[0].ocr_mask = MMC_VDD_165_195 |
@@ -299,7 +248,7 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 		/* NOTE:  we assume OMAP's MMC1 and MMC2 use
 		 * the TWL4030's VMMC1 and VMMC2, respectively;
 		 * and that OMAP's MMC3 isn't used.
-		*/
+		 */
 
 		switch (c->mmc) {
 		case 1:
@@ -318,15 +267,6 @@ void __init am3517_mmc_init(struct am3517_hsmmc_info *controllers)
 	}
 
 	omap2_init_mmc(hsmmc_data, OMAP34XX_NR_MMC);
-
-	/* pass the device nodes back to board setup code */
-	for (c = controllers; c->mmc; c++) {
-		struct omap_mmc_platform_data *mmc = hsmmc_data[c->mmc - 1];
-
-		if (!c->mmc || c->mmc > nr_hsmmc)
-			continue;
-		c->dev = mmc->dev;
-	}
 }
 #else
 inline void am3517_mmc_init(struct am3517_hsmmc_info *info)
